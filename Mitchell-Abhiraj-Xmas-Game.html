@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Christmas Catch Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(180deg, #004d00, #008000);
+      color: #fff;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    #game-info {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      font-size: 1.5rem;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      border-radius: 8px;
+      color: #fff;
+    }
+
+    #game-info span {
+      color: #FFD700;
+    }
+
+    #end-screen {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      display: none;
+    }
+
+    #end-screen h1 {
+      font-size: 3rem;
+      color: #FFD700;
+      text-shadow: 0 0 20px #FFD700, 0 0 40px #FF4500;
+    }
+
+    #end-screen p {
+      font-size: 1.5rem;
+      color: #FFF;
+    }
+
+    #end-screen button {
+      padding: 15px 30px;
+      font-size: 1.5rem;
+      border: none;
+      border-radius: 8px;
+      background: #28a745;
+      color: #fff;
+      cursor: pointer;
+      text-shadow: 0 0 10px #72ff72;
+    }
+
+    #end-screen button:hover {
+      background: #34d058;
+    }
+
+    #play-button {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 20px 40px;
+      font-size: 1.5rem;
+      background: #FFD700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      color: #fff;
+      text-shadow: 0 0 10px #72ff72;
+    }
+
+    #play-button:hover {
+      background: #ff9900;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <div id="game-info">
+    <div>Score: <span id="score">0</span></div>
+    <div>Level: <span id="level">1</span></div>
+    <div>Time Left: <span id="time">120</span>s</div>
+  </div>
+  <div id="end-screen">
+    <h1>Time's Up!</h1>
+    <p>Your final score: <span id="final-score">0</span></p>
+    <p>Level reached: <span id="final-level">1</span></p>
+    <button onclick="restartGame()">Play Again</button>
+  </div>
+
+  <!-- Play Button to start music -->
+  <button id="play-button">Play Music</button>
+
+  <audio id="background-music" src="/mnt/data/06%20RUDOLPH%20THE%20RED%20NOSED%20REINDEER.wav" preload="auto"></audio>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreDisplay = document.getElementById("score");
+    const levelDisplay = document.getElementById("level");
+    const timeDisplay = document.getElementById("time");
+    const endScreen = document.getElementById("end-screen");
+    const finalScoreDisplay = document.getElementById("final-score");
+    const finalLevelDisplay = document.getElementById("final-level");
+
+    const playButton = document.getElementById("play-button");
+    const backgroundMusic = document.getElementById("background-music");
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ["#FF0000", "#FFD700", "#008000"];
+    const gifts = [];
+    const basket = {
+      x: canvas.width / 2 - 50,
+      y: canvas.height - 60,
+      width: 100,
+      height: 30,
+      speed: 25, // Faster speed for smoother control
+      targetX: canvas.width / 2 - 50, // Target for smooth movement
+    };
+    let score = 0;
+    let level = 1;
+    let timeLeft = 120; // 2 minutes in seconds
+    let gameRunning = true;
+
+    function randomGift() {
+      const x = Math.random() * canvas.width;
+      const y = 0;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const size = 20 + Math.random() * 30;
+      return { x, y, size, color, speed: level + 2 };
+    }
+
+    // Smooth basket movement with easing
+    function updateBasket() {
+      const easing = 0.3; // Higher for smoother movement
+      basket.x += (basket.targetX - basket.x) * easing;
+    }
+
+    // Draw the basket
+    function drawBasket() {
+      ctx.fillStyle = "#FFD700";
+      ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = "#FFD700";
+    }
+
+    function drawGifts() {
+      gifts.forEach((gift) => {
+        ctx.beginPath();
+        ctx.arc(gift.x, gift.y, gift.size, 0, Math.PI * 2);
+        ctx.fillStyle = gift.color;
+        ctx.fill();
+        ctx.closePath();
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = gift.color;
+      });
+    }
+
+    function updateGifts() {
+      gifts.forEach((gift, index) => {
+        gift.y += gift.speed;
+        if (
+          gift.y + gift.size > basket.y &&
+          gift.x > basket.x &&
+          gift.x < basket.x + basket.width
+        ) {
+          gifts.splice(index, 1);
+          score += 10;
+          scoreDisplay.textContent = score;
+        } else if (gift.y > canvas.height) {
+          gifts.splice(index, 1);
+        }
+      });
+    }
+
+    function spawnGifts() {
+      if (Math.random() < 0.05 + level * 0.005) {
+        gifts.push(randomGift());
+      }
+    }
+
+    function drawScore() {
+      ctx.fillStyle = "#fff";
+      ctx.font = "24px Arial";
+      ctx.fillText(`Score: ${score}`, 20, 40);
+    }
+
+    function handleInput() {
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft") {
+          basket.targetX = Math.max(0, basket.targetX - basket.speed);
+        } else if (e.key === "ArrowRight") {
+          basket.targetX = Math.min(canvas.width - basket.width, basket.targetX + basket.speed);
+        }
+      });
+    }
+
+    function updateLevel() {
+      level = Math.min(20, Math.floor(score / 100) + 1);
+      levelDisplay.textContent = level;
+    }
+
+    function updateTime() {
+      if (timeLeft > 0) {
+        timeLeft -= 1;
+        timeDisplay.textContent = timeLeft;
+      } else {
+        gameRunning = false;
+        endGame();
+      }
+    }
+
+    function endGame() {
+      gameRunning = false;
+      finalScoreDisplay.textContent = score;
+      finalLevelDisplay.textContent = level;
+      endScreen.style.display = "block";
+    }
+
+    function restartGame() {
+      gifts.length = 0;
+      score = 0;
+      level = 1;
+      timeLeft = 120;
+      basket.x = canvas.width / 2 - 50;
+      basket.targetX = canvas.width / 2 - 50;
+      gameRunning = true;
+      endScreen.style.display = "none";
+      gameLoop();
+    }
+
+    function gameLoop() {
+      if (!gameRunning) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      spawnGifts();
+      updateGifts();
+      updateLevel();
+      updateBasket(); // Smooth basket movement
+      drawBasket();
+      drawGifts();
+      requestAnimationFrame(gameLoop);
+    }
+
+    handleInput();
+    setInterval(updateTime, 1000); // Update time every second
+    gameLoop();
+
+    // Play button functionality
+    playButton.addEventListener("click", () => {
+      backgroundMusic.play();
+      playButton.disabled = true; // Disable play button after click
+    });
+  </script>
+</body>
+</html>
